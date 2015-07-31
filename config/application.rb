@@ -8,6 +8,8 @@ Bundler.require(*Rails.groups)
 
 
 class Authorization
+  BRAND_IDS = 1.upto(100000)
+
   def initialize(app)
     @app = app
   end
@@ -15,15 +17,25 @@ class Authorization
   def call(env)
     # middleware stuff
     # binding.pry
+    # env['HTTP_ACL'] = {
+    #   :foo => "Bar"
+    # }.to_json
+
     env['HTTP_ACL'] = {
-      :foo => "Bar"
-    }
+      brand_id: BRAND_IDS
+    }.to_json
 
 
     @app.call(env)
   end
 end
 
+class ThisProxy < Rack::Proxy
+  def initialize(app, options = {})
+    @app = app
+    super(options)
+  end
+end
 
 module Proxy
   class Application < Rails::Application
@@ -43,7 +55,7 @@ module Proxy
     config.active_record.raise_in_transactional_callbacks = true
 
     config.middleware.use(Authorization)
-    config.middleware.use("Rack::Proxy", backend: "http://localhost:3006")
+    config.middleware.use(ThisProxy, backend: "http://localhost:3006")
 
     # binding.pry
 
